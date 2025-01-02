@@ -3,6 +3,7 @@ package com.zhipu.ai.ui
 import android.Manifest
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
 import androidx.activity.OnBackPressedCallback
@@ -37,6 +38,8 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
 
     private var mChannelName = "testAga"
     private var mJoinSuccess = false
+
+    private var mSendAudioMetadataTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,7 +120,11 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         updateUI()
 
         binding.btnJoin.setOnClickListener {
-            mMaaSEngine?.joinChannel(mChannelName)
+            var channelName = binding.etChannelName.text.toString()
+            if (channelName.isEmpty()) {
+                channelName = mChannelName
+            }
+            mMaaSEngine?.joinChannel(channelName)
         }
 
         binding.btnLeave.setOnClickListener {
@@ -189,6 +196,20 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         binding.btnSendText.setOnClickListener {
             mMaaSEngine?.sendText("hello world!")
         }
+
+        binding.btnSendAudioMetadata.setOnClickListener {
+            val metadata =
+                ("metadata:" + System.currentTimeMillis()).toByteArray(Charsets.UTF_8)
+            mMaaSEngine?.sendAudioMetadata(metadata)
+            mSendAudioMetadataTime = System.currentTimeMillis()
+            updateHistoryUI("SendAudioMetadata:${String(metadata)}")
+        }
+
+        binding.tvHistory.movementMethod = ScrollingMovementMethod.getInstance()
+
+        binding.btnClear.setOnClickListener {
+            binding.tvHistory.text = ""
+        }
     }
 
     private fun handleOnBackPressed() {
@@ -223,6 +244,8 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         binding.btnEnableAudio.isEnabled = mJoinSuccess
         binding.btnDisableAudio.isEnabled = mJoinSuccess
         binding.btnSendText.isEnabled = mJoinSuccess
+        binding.btnSendAudioMetadata.isEnabled = mJoinSuccess
+        binding.btnClear.isEnabled = mJoinSuccess
     }
 
     override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
@@ -260,6 +283,16 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         Log.d(TAG, "onStreamMessage uid:$uid data:${String(data!!, Charsets.UTF_8)}")
     }
 
+    override fun onAudioMetadataReceived(uid: Int, metadata: ByteArray?) {
+        Log.d(
+            TAG,
+            "onAudioMetadataReceived uid:$uid metadata:${String(metadata!!, Charsets.UTF_8)}"
+        )
+        val diff = System.currentTimeMillis() - mSendAudioMetadataTime
+        updateHistoryUI("ReceiveAudioMetadata:${String(metadata!!)} diff:$diff")
+
+    }
+
     private fun captureScreenToByteBuffer(view: View): ByteBuffer {
         // 创建一个与视图大小相同的 Bitmap
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
@@ -283,5 +316,11 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         bitmap.recycle()
 
         return buffer
+    }
+
+    private fun updateHistoryUI(message: String) {
+        runOnUiThread {
+            binding.tvHistory.text = binding.tvHistory.text.toString() + "\r\n" + message
+        }
     }
 }

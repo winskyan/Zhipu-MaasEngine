@@ -10,4 +10,6 @@
     <string name="enable_audio">Enable Audio</string>
     <string name="disable_audio">Disable Audio</string>
     <string name="send_text">Send Text</string>
+    <string name="send_audio_metadata">Send Audio metadata</string>
+    <string name="clear">Clear</string>
 </resources>

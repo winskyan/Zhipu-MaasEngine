@@ -98,6 +98,15 @@ class MaaSEngineInternal : MaaSEngine() {
                     )
                     mEventCallback?.onStreamMessage(uid, data)
                 }
+
+                override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
+                    super.onAudioMetadataReceived(uid, data)
+                    Log.d(
+                        MaaSConstants.TAG,
+                        "onAudioMetadataReceived uid:$uid data:${data?.toString()}"
+                    )
+                    mEventCallback?.onAudioMetadataReceived(uid, data)
+                }
             }
             rtcEngineConfig.mAudioScenario = Constants.AUDIO_SCENARIO_CHORUS
             mRtcEngine = RtcEngine.create(rtcEngineConfig)
@@ -493,6 +502,20 @@ class MaaSEngineInternal : MaaSEngine() {
             return MaaSConstants.ERROR_NOT_INITIALIZED
         }
         val ret = mRtcEngine?.sendStreamMessage(mDataStreamId, text.toByteArray(Charsets.UTF_8))
+        return if (ret == 0) {
+            MaaSConstants.OK
+        } else {
+            MaaSConstants.ERROR_GENERIC
+        }
+    }
+
+    override fun sendAudioMetadata(metadata: ByteArray): Int {
+        Log.d(MaaSConstants.TAG, "sendAudioMetadata metadata:${String(metadata)}")
+        if (mRtcEngine == null) {
+            Log.e(MaaSConstants.TAG, "sendAudioMetadata error: not initialized")
+            return MaaSConstants.ERROR_NOT_INITIALIZED
+        }
+        val ret = mRtcEngine?.sendAudioMetadata(metadata)
         return if (ret == 0) {
             MaaSConstants.OK
         } else {

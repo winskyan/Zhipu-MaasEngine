@@ -41,6 +41,14 @@
         app:layout_constraintStart_toEndOf="@id/btn_join"
         app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
+    <EditText
+        android:id="@+id/et_channel_name"
+        android:layout_width="80dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        app:layout_constraintStart_toEndOf="@id/btn_leave"
+        app:layout_constraintTop_toBottomOf="@id/toolbar" />
+
     <SurfaceView
         android:id="@+id/local_view"
         android:layout_width="0dp"
@@ -129,5 +137,36 @@
         android:text="@string/send_text"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_enable_audio" />
+
+    <Button
+        android:id="@+id/btn_send_audio_metadata"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:text="@string/send_audio_metadata"
+        app:layout_constraintStart_toEndOf="@id/btn_send_text"
+        app:layout_constraintTop_toBottomOf="@id/btn_enable_audio" />
+
+    <TextView
+        android:id="@+id/tv_history"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="10dp"
+        android:scrollbars="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btn_send_text" />
+
+
+    <Button
+        android:id="@+id/btn_clear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_marginEnd="5dp"
+        android:text="@string/clear"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

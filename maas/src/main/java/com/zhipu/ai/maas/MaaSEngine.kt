@@ -57,6 +57,8 @@ abstract class MaaSEngine {
 
     abstract fun sendText(text: String): Int
 
+    abstract fun sendAudioMetadata(metadata: ByteArray): Int
+
     protected abstract fun doDestroy()
 
     companion object {
