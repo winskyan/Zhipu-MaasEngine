@@ -11,18 +11,39 @@ import com.zhipu.ai.maas.model.WatermarkOptions
 import io.agora.rtc2.ChannelMediaOptions
 import io.agora.rtc2.Constants
 import io.agora.rtc2.DataStreamConfig
+import io.agora.rtc2.IAudioFrameObserver
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
 import io.agora.rtc2.RtcEngineConfig
+import io.agora.rtc2.audio.AdvancedAudioOptions
+import io.agora.rtc2.audio.AudioParams
 import io.agora.rtc2.video.VideoEncoderConfiguration
 import io.agora.rtc2.video.VideoEncoderConfiguration.VideoDimensions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
+import java.util.concurrent.Executors
 
 class MaaSEngineInternal : MaaSEngine() {
     private var mRtcEngine: RtcEngine? = null
     private var mMaaSEngineConfiguration: MaaSEngineConfiguration? = null
     private var mEventCallback: MaaSEngineEventHandler? = null
     private var mDataStreamId: Int = -1
+    private var mAudioFileName = ""
+
+//    private var mAudioProfile = Constants.AUDIO_PROFILE_DEFAULT
+//    private var mAudioScenario = Constants.AUDIO_SCENARIO_CHORUS
+
+    private var mAudioProfile = Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO
+    private var mAudioScenario = Constants.AUDIO_SCENARIO_GAME_STREAMING
+
+    private val singleThreadExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+
 
     override fun initialize(configuration: MaaSEngineConfiguration): Int {
         Log.d(MaaSConstants.TAG, "initialize configuration:$configuration")
@@ -31,6 +52,9 @@ class MaaSEngineInternal : MaaSEngine() {
             return MaaSConstants.ERROR_INVALID_PARAMS
         }
         Log.d(MaaSConstants.TAG, "maas version:" + getSdkVersion())
+
+        mAudioFileName = configuration.context?.externalCacheDir?.absolutePath + "/audio_"
+        Log.d(MaaSConstants.TAG, "mAudioFileName:$mAudioFileName")
         mMaaSEngineConfiguration = configuration
         mEventCallback = configuration.eventHandler
         try {
@@ -108,24 +132,31 @@ class MaaSEngineInternal : MaaSEngine() {
                     mEventCallback?.onAudioMetadataReceived(uid, data)
                 }
             }
-            rtcEngineConfig.mAudioScenario = Constants.AUDIO_SCENARIO_CHORUS
+
             mRtcEngine = RtcEngine.create(rtcEngineConfig)
 
-            mRtcEngine?.setAudioProfile(
-                Constants.AUDIO_SCENARIO_CHORUS,
-                Constants.AUDIO_SCENARIO_GAME_STREAMING
-            )
+            mRtcEngine?.setAudioProfile(mAudioProfile)
+            mRtcEngine?.setAudioScenario(mAudioScenario)
 
             mRtcEngine?.setParameters("{\"rtc.enable_debug_log\":true}")
+            mRtcEngine?.setParameters("{\"che.audio.aec.enable\":false}")
+            mRtcEngine?.setParameters("{\"che.audio.ans.enable\":false}")
+            mRtcEngine?.setParameters("{\"che.audio.agc.enable\":false}")
+            mRtcEngine?.setParameters("{\"che.audio.custom_payload_type\":78}")
+            mRtcEngine?.setParameters("{\"che.audio.custom_bitrate\":128000}")
+//            mRtcEngine?.setParameters("{\"che.audio.frame_dump\":{\"location\":\"all\",\"action\":\"start\",\"max_size_bytes\":\"100000000\",\"uuid\":\"123456789\", \"duration\": \"150000\"}}")
+
+            mRtcEngine?.adjustRecordingSignalVolume(128)
+
+
+            if (mAudioProfile == Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO) {
+                val options = AdvancedAudioOptions()
+                options.audioProcessingChannels =
+                    AdvancedAudioOptions.AudioProcessingChannelsEnum.AGORA_AUDIO_STEREO_PROCESSING
+                mRtcEngine?.setAdvancedAudioOptions(options)
+            }
 
             mRtcEngine?.setDefaultAudioRoutetoSpeakerphone(true)
-
-            mRtcEngine?.setRecordingAudioFrameParameters(
-                16000,
-                1,
-                Constants.RAW_AUDIO_FRAME_OP_MODE_READ_ONLY,
-                320
-            )
 
             Log.d(
                 MaaSConstants.TAG, "initRtcEngine success"
@@ -140,14 +171,203 @@ class MaaSEngineInternal : MaaSEngine() {
         return MaaSConstants.OK
     }
 
-    override fun joinChannel(channelId: String): Int {
-        Log.d(MaaSConstants.TAG, "joinChannel channelId:$channelId")
+    fun processBuffer(buffer: ByteBuffer?) {
+        if (buffer == null) return
+
+        buffer.rewind()
+        val byteArray = ByteArray(buffer.remaining())
+        buffer.get(byteArray)
+
+
+        for (i in byteArray.indices step 4) {
+            Log.d(
+                MaaSConstants.TAG,
+                "byteArray[$i]:${byteArray[i + 2]} $byteArray[i + 1]}:${byteArray[i + 3]}"
+            )
+
+            byteArray[i] = 0
+            byteArray[i + 1] = 0
+//            byteArray[i + 2] = 0
+//            byteArray[i + 3] = 0
+        }
+
+        buffer.clear()
+        buffer.put(byteArray)
+        buffer.rewind()
+    }
+
+    private fun saveAudioFrame(buffer: ByteBuffer?) {
+        if (buffer == null) return
+
+        buffer.rewind()
+        val byteArray = ByteArray(buffer.remaining())
+        buffer.get(byteArray)
+
+
+        CoroutineScope(singleThreadExecutor).launch {
+            saveFile(mAudioFileName, byteArray)
+        }
+    }
+
+    private fun shutdownExecutor() {
+        singleThreadExecutor.close()
+    }
+
+    private suspend fun saveFile(fileName: String, byteArray: ByteArray) {
+        val file = File(fileName)
+        withContext(Dispatchers.IO) {
+            FileOutputStream(file, true).use { outputStream ->
+                outputStream.write(byteArray)
+            }
+        }
+    }
+
+
+    private fun registerAudioFrame(
+        registerRecordingAudio: Boolean,
+        registerPlaybackAudio: Boolean
+    ) {
+        if (!registerRecordingAudio && !registerPlaybackAudio) {
+            return
+        }
+
+        if (mRtcEngine == null) {
+            Log.e(MaaSConstants.TAG, "registerAudioFrame error: not initialized")
+            return
+        }
+
+        if (registerRecordingAudio) {
+            mRtcEngine?.setRecordingAudioFrameParameters(
+                16000,
+                2,
+                Constants.RAW_AUDIO_FRAME_OP_MODE_READ_WRITE,
+                320
+            )
+        }
+
+        if (registerPlaybackAudio) {
+            mRtcEngine?.setPlaybackAudioFrameBeforeMixingParameters(
+                16000,
+                2
+            )
+        }
+        mRtcEngine?.registerAudioFrameObserver(object : IAudioFrameObserver {
+            override fun onRecordAudioFrame(
+                channelId: String?,
+                type: Int,
+                samplesPerChannel: Int,
+                bytesPerSample: Int,
+                channels: Int,
+                samplesPerSec: Int,
+                buffer: ByteBuffer?,
+                renderTimeMs: Long,
+                avsync_type: Int
+            ): Boolean {
+                processBuffer(buffer)
+                return true
+            }
+
+            override fun onPlaybackAudioFrame(
+                channelId: String?,
+                type: Int,
+                samplesPerChannel: Int,
+                bytesPerSample: Int,
+                channels: Int,
+                samplesPerSec: Int,
+                buffer: ByteBuffer?,
+                renderTimeMs: Long,
+                avsync_type: Int
+            ): Boolean {
+
+                return true
+            }
+
+            override fun onMixedAudioFrame(
+                channelId: String?,
+                type: Int,
+                samplesPerChannel: Int,
+                bytesPerSample: Int,
+                channels: Int,
+                samplesPerSec: Int,
+                buffer: ByteBuffer?,
+                renderTimeMs: Long,
+                avsync_type: Int
+            ): Boolean {
+                return true
+            }
+
+            override fun onEarMonitoringAudioFrame(
+                type: Int,
+                samplesPerChannel: Int,
+                bytesPerSample: Int,
+                channels: Int,
+                samplesPerSec: Int,
+                buffer: ByteBuffer?,
+                renderTimeMs: Long,
+                avsync_type: Int
+            ): Boolean {
+                return true
+            }
+
+            override fun onPlaybackAudioFrameBeforeMixing(
+                channelId: String?,
+                uid: Int,
+                type: Int,
+                samplesPerChannel: Int,
+                bytesPerSample: Int,
+                channels: Int,
+                samplesPerSec: Int,
+                buffer: ByteBuffer?,
+                renderTimeMs: Long,
+                avsync_type: Int,
+                rtpTimestamp: Int
+            ): Boolean {
+                saveAudioFrame(buffer)
+                return true
+            }
+
+            override fun getObservedAudioFramePosition(): Int {
+                return 0
+            }
+
+            override fun getRecordAudioParams(): AudioParams {
+                return AudioParams(0, 0, 0, 0)
+            }
+
+            override fun getPlaybackAudioParams(): AudioParams {
+                return AudioParams(0, 0, 0, 0)
+            }
+
+            override fun getMixedAudioParams(): AudioParams {
+                return AudioParams(0, 0, 0, 0)
+            }
+
+            override fun getEarMonitoringAudioParams(): AudioParams {
+                return AudioParams(0, 0, 0, 0)
+            }
+        })
+    }
+
+    override fun joinChannel(
+        channelId: String,
+        roleType: Int,
+        registerRecordingAudio: Boolean,
+        registerPlaybackAudio: Boolean
+    ): Int {
+        Log.d(
+            MaaSConstants.TAG,
+            "joinChannel channelId:$channelId roleType:$roleType registerRecordingAudio:$registerRecordingAudio registerPlaybackAudio:$registerPlaybackAudio"
+        )
         if (mRtcEngine == null) {
             Log.e(MaaSConstants.TAG, "joinChannel error: not initialized")
             return MaaSConstants.ERROR_NOT_INITIALIZED
         }
         try {
+            registerAudioFrame(registerRecordingAudio, registerPlaybackAudio)
+
             val ret = mMaaSEngineConfiguration?.userId?.let {
+                mAudioFileName +=
+                    channelId + "_" + it + "_" + System.currentTimeMillis() + ".pcm"
                 mRtcEngine?.joinChannel(
                     mMaaSEngineConfiguration?.rtcToken,
                     channelId,
@@ -156,7 +376,7 @@ class MaaSEngineInternal : MaaSEngine() {
                         init {
                             autoSubscribeAudio = true
                             autoSubscribeVideo = true
-                            clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+                            clientRoleType = roleType
                         }
                     })
             } ?: MaaSConstants.ERROR_INVALID_PARAMS
@@ -526,6 +746,7 @@ class MaaSEngineInternal : MaaSEngine() {
     override fun doDestroy() {
         Log.d(MaaSConstants.TAG, "doDestroy")
         RtcEngine.destroy()
+        shutdownExecutor()
         mRtcEngine = null
         mMaaSEngineConfiguration = null
         mEventCallback = null

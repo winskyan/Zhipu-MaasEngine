@@ -124,7 +124,12 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
             if (channelName.isEmpty()) {
                 channelName = mChannelName
             }
-            mMaaSEngine?.joinChannel(channelName)
+            mMaaSEngine?.joinChannel(
+                channelName,
+                MaaSConstants.CLIENT_ROLE_BROADCASTER,
+                registerRecordingAudio = false,
+                registerPlaybackAudio = false
+            )
         }
 
         binding.btnLeave.setOnClickListener {

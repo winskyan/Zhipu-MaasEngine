@@ -9,6 +9,8 @@ class MaaSConstants {
         const val ERROR_INVALID_PARAMS = 1
         const val ERROR_NOT_INITIALIZED = 2
 
+        const val CLIENT_ROLE_BROADCASTER = 1;
+        const val CLIENT_ROLE_AUDIENCE = 2;
     }
 
 

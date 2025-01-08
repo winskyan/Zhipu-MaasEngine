@@ -10,7 +10,13 @@ import java.nio.ByteBuffer
 abstract class MaaSEngine {
     abstract fun initialize(configuration: MaaSEngineConfiguration): Int
 
-    abstract fun joinChannel(channelId: String): Int
+    abstract fun joinChannel(
+        channelId: String,
+        roleType: Int = MaaSConstants.CLIENT_ROLE_BROADCASTER,
+        registerRecordingAudio: Boolean = false,
+        registerPlaybackAudio: Boolean = false
+    ): Int
+
     abstract fun leaveChannel(): Int
     abstract fun startVideo(
         view: View?,
