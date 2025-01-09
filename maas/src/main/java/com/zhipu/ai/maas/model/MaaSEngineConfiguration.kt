@@ -3,6 +3,7 @@ package com.zhipu.ai.maas.model
 import android.content.Context
 import com.zhipu.ai.maas.MaaSConstants
 import com.zhipu.ai.maas.MaaSEngineEventHandler
+import io.agora.rtc2.Constants
 
 class MaaSEngineConfiguration(
     var context: Context?,
@@ -19,7 +20,10 @@ class MaaSEngineConfiguration(
     var output: SceneMode,
     var vadConfiguration: VadConfiguration,
     var noiseEnvironment: MaaSConstants.NoiseEnvironment = MaaSConstants.NoiseEnvironment.NOISE,
-    var speechRecognitionCompletenessLevel: MaaSConstants.SpeechRecognitionCompletenessLevel = MaaSConstants.SpeechRecognitionCompletenessLevel.NORMAL
+    var speechRecognitionCompletenessLevel: MaaSConstants.SpeechRecognitionCompletenessLevel = MaaSConstants.SpeechRecognitionCompletenessLevel.NORMAL,
+    var params: List<String>,
+    var audioProfile: Int,
+    var audioScenario: Int
 ) {
     constructor() : this(
         context = null,
@@ -34,8 +38,15 @@ class MaaSEngineConfiguration(
         input = SceneMode("zh-CN", 16000, 1, 16),
         output = SceneMode("zh-CN", 16000, 1, 16),
         agentVoiceName = "",
-        vadConfiguration = VadConfiguration(500)
+        vadConfiguration = VadConfiguration(500),
+        params = emptyList<String>(),
+        audioProfile = Constants.AUDIO_PROFILE_DEFAULT,
+        audioScenario = Constants.AUDIO_SCENARIO_CHORUS
     ) {
 
+    }
+
+    override fun toString(): String {
+        return "MaaSEngineConfiguration(context=$context, eventHandler=$eventHandler, enableConsoleLog=$enableConsoleLog, enableSaveLogToFile=$enableSaveLogToFile, appId='$appId', userId=$userId, rtcToken='$rtcToken', enableMultiTurnShortTermMemory=$enableMultiTurnShortTermMemory, userName='$userName', agentVoiceName='$agentVoiceName', input=$input, output=$output, vadConfiguration=$vadConfiguration, noiseEnvironment=$noiseEnvironment, speechRecognitionCompletenessLevel=$speechRecognitionCompletenessLevel, params=$params, audioProfile=$audioProfile, audioScenario=$audioScenario)"
     }
 }

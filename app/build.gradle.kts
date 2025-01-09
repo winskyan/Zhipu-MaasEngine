@@ -72,4 +72,5 @@ dependencies {
     implementation(libs.xpopup)
     implementation(libs.agora.authentication)
     implementation(libs.commons.codec)
+    implementation(libs.gson)
 }

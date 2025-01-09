@@ -36,14 +36,7 @@ class MaaSEngineInternal : MaaSEngine() {
     private var mDataStreamId: Int = -1
     private var mAudioFileName = ""
 
-//    private var mAudioProfile = Constants.AUDIO_PROFILE_DEFAULT
-//    private var mAudioScenario = Constants.AUDIO_SCENARIO_CHORUS
-
-    private var mAudioProfile = Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO
-    private var mAudioScenario = Constants.AUDIO_SCENARIO_GAME_STREAMING
-
     private val singleThreadExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-
 
     override fun initialize(configuration: MaaSEngineConfiguration): Int {
         Log.d(MaaSConstants.TAG, "initialize configuration:$configuration")
@@ -135,21 +128,25 @@ class MaaSEngineInternal : MaaSEngine() {
 
             mRtcEngine = RtcEngine.create(rtcEngineConfig)
 
-            mRtcEngine?.setAudioProfile(mAudioProfile)
-            mRtcEngine?.setAudioScenario(mAudioScenario)
+            mRtcEngine?.setAudioProfile(configuration.audioProfile)
+            mRtcEngine?.setAudioScenario(configuration.audioScenario)
 
             mRtcEngine?.setParameters("{\"rtc.enable_debug_log\":true}")
-            mRtcEngine?.setParameters("{\"che.audio.aec.enable\":false}")
-            mRtcEngine?.setParameters("{\"che.audio.ans.enable\":false}")
-            mRtcEngine?.setParameters("{\"che.audio.agc.enable\":false}")
-            mRtcEngine?.setParameters("{\"che.audio.custom_payload_type\":78}")
-            mRtcEngine?.setParameters("{\"che.audio.custom_bitrate\":128000}")
+            for (params in configuration.params) {
+                mRtcEngine?.setParameters(params)
+                Log.d(MaaSConstants.TAG, "setParameters:$params")
+            }
+//            mRtcEngine?.setParameters("{\"che.audio.aec.enable\":false}")
+//            mRtcEngine?.setParameters("{\"che.audio.ans.enable\":false}")
+//            mRtcEngine?.setParameters("{\"che.audio.agc.enable\":false}")
+//            mRtcEngine?.setParameters("{\"che.audio.custom_payload_type\":78}")
+//            mRtcEngine?.setParameters("{\"che.audio.custom_bitrate\":128000}")
 //            mRtcEngine?.setParameters("{\"che.audio.frame_dump\":{\"location\":\"all\",\"action\":\"start\",\"max_size_bytes\":\"100000000\",\"uuid\":\"123456789\", \"duration\": \"150000\"}}")
 
             mRtcEngine?.adjustRecordingSignalVolume(128)
 
 
-            if (mAudioProfile == Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO) {
+            if (configuration.audioProfile == Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO) {
                 val options = AdvancedAudioOptions()
                 options.audioProcessingChannels =
                     AdvancedAudioOptions.AudioProcessingChannelsEnum.AGORA_AUDIO_STEREO_PROCESSING

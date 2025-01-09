@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.lxj.xpopup.XPopup
 import com.zhipu.ai.BuildConfig
 import com.zhipu.ai.constants.Constants
+import com.zhipu.ai.context.DemoContext
 import com.zhipu.ai.databinding.ActivityMainBinding
 import com.zhipu.ai.maas.MaaSConstants
 import com.zhipu.ai.maas.MaaSEngine
@@ -20,6 +21,7 @@ import com.zhipu.ai.maas.model.MaaSEngineConfiguration
 import com.zhipu.ai.maas.model.SceneMode
 import com.zhipu.ai.maas.model.VadConfiguration
 import com.zhipu.ai.maas.model.WatermarkOptions
+import com.zhipu.ai.ui.dialog.SettingsDialog
 import com.zhipu.ai.utils.KeyCenter
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
@@ -91,6 +93,10 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
     }
 
     private fun initData() {
+
+    }
+
+    private fun initEngine() {
         mMaaSEngine = MaaSEngine.create()
         val configuration = MaaSEngineConfiguration()
         configuration.context = this
@@ -109,7 +115,16 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         configuration.noiseEnvironment = MaaSConstants.NoiseEnvironment.NOISE
         configuration.speechRecognitionCompletenessLevel =
             MaaSConstants.SpeechRecognitionCompletenessLevel.NORMAL
-        var ret = mMaaSEngine?.initialize(configuration)
+        configuration.params = DemoContext.getParams().toList()
+
+        if (DemoContext.getAudioProfile() != -1) {
+            configuration.audioProfile = DemoContext.getAudioProfile()
+        }
+        if (DemoContext.getAudioScenario() != -1) {
+            configuration.audioScenario = DemoContext.getAudioScenario()
+        }
+
+        val ret = mMaaSEngine?.initialize(configuration)
         if (ret == 0) {
             Log.d(TAG, "initialize success")
         }
@@ -119,11 +134,16 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         handleOnBackPressed()
         updateUI()
 
+        binding.toolbarSetting.setOnClickListener {
+            SettingsDialog.showSettingsDialog(this)
+        }
+
         binding.btnJoin.setOnClickListener {
             var channelName = binding.etChannelName.text.toString()
             if (channelName.isEmpty()) {
                 channelName = mChannelName
             }
+            initEngine()
             mMaaSEngine?.joinChannel(
                 channelName,
                 MaaSConstants.CLIENT_ROLE_BROADCASTER,
