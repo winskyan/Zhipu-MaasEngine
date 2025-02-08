@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
     private var mJoinSuccess = false
 
     private var mSendAudioMetadataTime = 0L
+    private var mSendStreamMessageTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -219,7 +220,9 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
         }
 
         binding.btnSendText.setOnClickListener {
-            mMaaSEngine?.sendText("hello world!")
+            mMaaSEngine?.sendText("streamMessage:" + System.currentTimeMillis())
+            mSendStreamMessageTime = System.currentTimeMillis()
+            updateHistoryUI("SendStreamMessage:${System.currentTimeMillis()}")
         }
 
         binding.btnSendAudioMetadata.setOnClickListener {
@@ -306,6 +309,12 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
 
     override fun onStreamMessage(uid: Int, data: ByteArray?) {
         Log.d(TAG, "onStreamMessage uid:$uid data:${String(data!!, Charsets.UTF_8)}")
+        if (0L != mSendStreamMessageTime) {
+            val diff = System.currentTimeMillis() - mSendStreamMessageTime
+            updateHistoryUI("ReceiveStreamMessage:${String(data)} diff:$diff")
+        } else {
+            updateHistoryUI("ReceiveStreamMessage:${String(data)}")
+        }
     }
 
     override fun onAudioMetadataReceived(uid: Int, metadata: ByteArray?) {
@@ -313,9 +322,12 @@ class MainActivity : AppCompatActivity(), MaaSEngineEventHandler {
             TAG,
             "onAudioMetadataReceived uid:$uid metadata:${String(metadata!!, Charsets.UTF_8)}"
         )
-        val diff = System.currentTimeMillis() - mSendAudioMetadataTime
-        updateHistoryUI("ReceiveAudioMetadata:${String(metadata!!)} diff:$diff")
-
+        if (0L != mSendAudioMetadataTime) {
+            val diff = System.currentTimeMillis() - mSendAudioMetadataTime
+            updateHistoryUI("ReceiveAudioMetadata:${String(metadata)} diff:$diff")
+        } else {
+            updateHistoryUI("ReceiveAudioMetadata:${String(metadata)}")
+        }
     }
 
     private fun captureScreenToByteBuffer(view: View): ByteBuffer {

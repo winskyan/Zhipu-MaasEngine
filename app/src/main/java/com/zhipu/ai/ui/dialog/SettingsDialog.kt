@@ -65,10 +65,12 @@ object SettingsDialog {
         config: Config,
         context: Context
     ) {
+        var viewIndex = 0
         val selectedParams = DemoContext.getParams().toMutableSet()
         config.params.forEach { paramsObj ->
             paramsObj.forEach { (key, valueList) ->
                 (valueList as List<String>).forEachIndexed { index, param ->
+                    viewIndex++
                     val checkBox = CheckBox(context).apply {
                         id = View.generateViewId()
                         text = "$key: $param"
@@ -85,7 +87,7 @@ object SettingsDialog {
                     constraintLayout.addView(checkBox)
                     val constraintSet = ConstraintSet()
                     constraintSet.clone(constraintLayout)
-                    if (index == 0) {
+                    if (viewIndex == 1) {
                         constraintSet.connect(
                             checkBox.id,
                             ConstraintSet.TOP,

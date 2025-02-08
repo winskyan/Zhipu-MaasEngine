@@ -6,6 +6,13 @@
         "{\"rtc.video.avsync\":false}",
         "{\"rtc.video.enable_pvc\":false}",
         "{\"rtc.video.enable_sr\":{\"enabled\":false,\"mode\":2}}"
+      ],
+      "music_stereo": [
+        "{\"che.audio.aec.enable\":false}",
+        "{\"che.audio.ans.enable\":false}",
+        "{\"che.audio.agc.enable\":false}",
+        "{\"che.audio.custom_payload_type\":78}",
+        "{\"che.audio.custom_bitrate\":128000}"
       ]
     }
   ],
